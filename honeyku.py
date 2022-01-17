@@ -87,7 +87,8 @@ def load_config():
 	""" Load the configuration from local file or Amazon S3 """
 
 	# Check the environment variable for config type (local/s3)
-	CONFIGFILE = os.environ.get('configFile')
+	#CONFIGFILE = os.environ.get('configFile')
+	CONFIGFILE = "local"
 	# Load config from S3
 	if CONFIGFILE == "s3":
 		BUCKET = os.environ.get('s3Bucket')
