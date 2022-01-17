@@ -63,6 +63,9 @@ def catch_all(path):
 		#if config['alert']['sms']['enabled'] == "true":
 		#	sms_alerter(alertMessage, config)
 		#TODO: HTTP Endpoint Support
+		# Local log
+		if config['alert']['local']['enabled'] == "true":
+			local_logger(alertMessage, config)
 	# Honeypot event logs
 	if request.headers.getlist("X-Forwarded-For"):
 		source_ip = request.headers.getlist("X-Forwarded-For")[0]
@@ -160,19 +163,20 @@ def alert_msg(req, conf):
 
 	# Message dictionary
 	msg = {
-		"token-note": note if note else "None",
+		"token_note": note if note else "None",
 		"host": url_root,
 		"path": full_path if full_path else "None",
-		"http-method": http_method,
+		"http_method": http_method,
 		"token": args[0] if args else "None", #Only the first arg
 		"body": data if data else "None",
-		"source-ip": source_ip,
+		"sourceip": source_ip,
 		"user-agent": useragent_str,
 		"browser": browser if browser else "None",
 		"browser_version": browser_version if browser_version else "None",
 		"browser_lang": browser_lang if browser_lang else "None",
 		"platform": platform if platform else "None",
-		"http-headers": headers
+		"http-headers": headers,
+		"timestamp": time.strftime('%a, %d %b %Y %H:%M:%S %Z', time.localtime())
 		#"threat-intel": threat_intel
 	}
 
@@ -228,6 +232,13 @@ def sms_alerter(msg, conf):
 	""" Send SMS alert """
 	#TODO: Complete and test the SMS Alert
 
+def local_logger(msg, conf):
+	"""Log to local """
+	path = conf['alert']['local']['location']
+	file = open(path+"honeyku.log", "a+")
+	file.write(json.dumps(msg))
+	file.write("\n")
+	file.close()
 
 def slack_alerter(msg, webhook_url):
 	""" Send Slack alert """

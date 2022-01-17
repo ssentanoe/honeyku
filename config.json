@@ -50,6 +50,10 @@
 			"from_number": "",
 			"twilio_account_sid": "",
 			"twilio_auth_token": ""
+		},
+		"local": {
+			"enabled": "true",
+			"location": "logs/"
 		}
 	},
 	"threat-intel-lookup": {
