@@ -96,7 +96,7 @@ def load_config():
 		#TODO: Add S3 support
 	elif CONFIGFILE == "local":
 		# Load config from the local file
-		with open('config.json') as config_file:
+		with open('/config.json') as config_file:
 			conf = json.load(config_file)
 			logger.info("Local config file loaded")
 
