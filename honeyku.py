@@ -143,6 +143,9 @@ def alert_msg(req, conf):
 	browser_lang = req.user_agent.language
 	platform = req.user_agent.platform
 	headers = "{}".format(req.headers)
+	headersDict = {}
+	for i in req.headers:
+		headersDict[i[0]] = i[1]
 	args = ["{}={}".format(key, value) for key, value in request.args.items()]
 	# X-Forwarded-For: the originating IP address of the client connecting to the Heroku router
 	if req.headers.getlist("X-Forwarded-For"):
@@ -177,7 +180,7 @@ def alert_msg(req, conf):
 		"browser_version": browser_version if browser_version else "None",
 		"browser_lang": browser_lang if browser_lang else "None",
 		"platform": platform if platform else "None",
-		"http-headers": headers,
+		"http-headers": headersDict,
 		"timestamp": iso_8601_format(datetime.now())
 		#"threat-intel": threat_intel
 	}
