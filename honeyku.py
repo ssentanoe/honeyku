@@ -43,8 +43,8 @@ logger.setLevel(logging.INFO)
 
 app = Flask(__name__)
 
-@app.route('/', defaults={'path': ''})
-@app.route('/<path:path>')
+@app.route('/', defaults={'path': ''}, methods=["GET","POST","PUT"])
+@app.route('/<path:path>', methods=["GET","POST","PUT"])
 def catch_all(path):
 	# Load the config file
 	config=load_config()
@@ -146,6 +146,12 @@ def alert_msg(req, conf):
 	headersDict = {}
 	for i in req.headers:
 		headersDict[i[0]] = i[1]
+	argsDict = {}
+	for i in req.args:
+		argsDict[i] = req.args[i]
+	formDict = {}
+	for i in req.form:
+		formDict[i] = req.form[i]
 	args = ["{}={}".format(key, value) for key, value in request.args.items()]
 	# X-Forwarded-For: the originating IP address of the client connecting to the Heroku router
 	if req.headers.getlist("X-Forwarded-For"):
@@ -181,7 +187,9 @@ def alert_msg(req, conf):
 		"browser_lang": browser_lang if browser_lang else "None",
 		"platform": platform if platform else "None",
 		"http-headers": headersDict,
-		"timestamp": iso_8601_format(datetime.now())
+		"timestamp": iso_8601_format(datetime.now()),
+		"args": argsDict,
+		"form": formDict
 		#"threat-intel": threat_intel
 	}
 
