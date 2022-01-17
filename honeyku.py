@@ -26,6 +26,7 @@ import urllib.request
 import urllib.error
 import smtplib
 import base64
+from datetime import datetime
 
 __author__ = 'Adel "0x4d31" Karimi'
 __version__ = '0.1'
@@ -176,7 +177,7 @@ def alert_msg(req, conf):
 		"browser_lang": browser_lang if browser_lang else "None",
 		"platform": platform if platform else "None",
 		"http-headers": headers,
-		"timestamp": time.strftime('%a, %d %b %Y %H:%M:%S %Z', time.localtime())
+		"timestamp": iso_8601_format(datetime.now())
 		#"threat-intel": threat_intel
 	}
 
@@ -337,6 +338,21 @@ def slack_alerter(msg, webhook_url):
 
 	return
 
+#https://stackoverflow.com/questions/34044820/python-iso-8601-date-format
+def iso_8601_format(dt):
+	"""YYYY-MM-DDThh:mm:ssTZD (1997-07-16T19:20:30-03:00)"""
+
+	if dt is None:
+		return ""
+
+	fmt_datetime = dt.strftime('%Y-%m-%dT%H:%M:%S')
+	tz = dt.utcoffset()
+	if tz is None:
+		fmt_timezone = "+00:00"
+	else:
+		fmt_timezone = str.format('{0:+06.2f}', float(tz.total_seconds() / 3600))
+
+	return fmt_datetime + fmt_timezone
 
 if __name__ == '__main__':
 	app.run(debug=False, use_reloader=True)
