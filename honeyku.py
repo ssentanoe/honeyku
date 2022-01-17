@@ -49,7 +49,7 @@ def catch_all(path):
 	# Load the config file
 	config=load_config()
 	# Honeytoken alerts
-	if request.path in config['traps'] and request.path != "/favicon.ico":
+	if request.path != "/favicon.ico":
 		# Preparing the alert message
 		alertMessage = alert_msg(request, config)
 		# Slack alert
