@@ -80,6 +80,12 @@ def catch_all(path):
 	# You can comment the next 2 lines if you don't want to use this. /Just an example/
 	if body == "custom.html":
 		return (render_template(body, browser = request.user_agent.browser, ua = request.user_agent.string))
+
+	if contype == "application/json":
+		with open('templates/'+body) as f:
+			d = json.load(f)
+			return jsonify(d)
+
 	return (send_file(body, mimetype=contype) if "image" in contype else render_template(body))
 
 
