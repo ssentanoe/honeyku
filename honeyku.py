@@ -44,6 +44,7 @@ logger.setLevel(logging.INFO)
 app = Flask(__name__)
 
 config = dict()
+sorrirConfig = dict
 
 @app.route('/', defaults={'path': ''}, methods=["GET","POST","PUT"])
 @app.route('/<path:path>', methods=["GET","POST","PUT"])
@@ -90,10 +91,26 @@ def load_config(configPath):
 	""" Load the configuration from local file """
 	with open(configPath) as config_file:
 		conf = json.load(config_file)
-		logger.info("Local config file loaded")
+		logger.info(configPath + " config file loaded")
 
 	return conf
 
+def merge_config():
+	connectionTechs = sorrirConfig["CommunicationConfiguration"]["connectionTechs"]
+	for a in connectionTechs:
+		if a["commOption"] == "REST":
+			url = "/" + a["targetContainer"] + "/" + a["targetComponent"] + "/" + a["targetPort"]
+			newEntry = {
+				"trap-note": "Expected source: " + a["sourceContainer"] + "; Expected component: " + a["sourceComponent"],
+				"trap-response": {
+					"content-type": "application/json",
+					"body": "empty.json"
+				}
+			}
+			config["traps"][url] = newEntry
+
+	#clean up sorrir config
+	sorrirConfig.clear()
 
 def generate_http_response(req, conf):
 	""" Generate HTTP response """
@@ -225,6 +242,7 @@ if __name__ == '__main__':
 	
 	#load config once
 	configFound = False
+	sorrirConfigFound = False
 	try:
 		config = load_config("config.json")
 		configFound = True
@@ -236,7 +254,14 @@ if __name__ == '__main__':
 		configFound = True
 	except:
 		pass
+
+	try:
+		sorrirConfig = load_config("production.json")
+		sorrirConfigFound = True
+	except:
+		pass
 	
 	#config loaded, run the app
-	if configFound:
+	if configFound and sorrirConfigFound:
+		merge_config()
 		app.run(host='0.0.0.0', debug=False, use_reloader=True, port=11111)

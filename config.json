@@ -1,45 +1,34 @@
 {
 	"default-http-response": {
-		"content-type": "text/html",
-		"body": "default.html"
+		"content-type": "application/json",
+		"body": "default.json"
 	},
 	"traps": {
-		"/awesomeapp/v2/iam/creds": {
-			"trap-note": "default note for the uri",
+		"/hello" : {
+			"trap-note": "hello world",
 			"trap-response": {
 				"content-type": "text/html",
-				"body": "custom.html"
-			},
-			"id=1": {
-				"token-note": "sample note for the token"
+				"body": "hello-world.html"
 			}
 		},
-		"/v1/get-pass": {
-			"user=jack": {
-				"token-note": "token is embedded in secret.doc",
-				"token-response": {
-					"content-type": "image/png",
-					"body": "static/pixel.png"
-				}
-			},
-			"page=2": {
-				"token-note": "hidden link in login page",
-				"token-response": {
-					"content-type": "image/jpg",
-					"body": "static/homer.jpg"
-				}
+
+		"/payment-accept" : {
+			"trap-note": "Accept Payment",
+			"trap-response": {
+				"content-type": "application/json",
+				"body": "payment-accept.json"
 			}
 		}
 	},
 	"alert": {
 		"slack": {
-			"enabled": "false",
-			"webhook-url": "https://hooks.slack.com/services/T3Sb6EXAMPLE"
+			"enabled": "",
+			"webhook-url": ""
 		},
 		"email": {
-			"enabled": "false",
-			"to_email": "honeyku.alert1935342@mailinator.com",
-			"smtp_server": "smtp.gmail.com",
+			"enabled": "",
+			"to_email": "",
+			"smtp_server": "",
 			"smtp_port": 587,
 			"smtp_user": "youremail@gmail.com",
 			"smtp_password": "yourpassword"
