@@ -43,68 +43,54 @@ logger.setLevel(logging.INFO)
 
 app = Flask(__name__)
 
+config = dict()
+
 @app.route('/', defaults={'path': ''}, methods=["GET","POST","PUT"])
 @app.route('/<path:path>', methods=["GET","POST","PUT"])
 def catch_all(path):
-	# Load the config file
-	config=load_config()
 	# Honeytoken alerts
 	if request.path != "/favicon.ico":
+
+		request.data = consumeBody(request.data)
+
+		# Prepare and send the custom HTTP response
+		contype, body, http_status = generate_http_response(request, config)
+
 		# Preparing the alert message
-		alertMessage = alert_msg(request, config)
-		# Slack alert
-		if config['alert']['slack']['enabled'] == "true":
-			WEBHOOK_URL = config['alert']['slack']['webhook-url']
-			slack_alerter(alertMessage, WEBHOOK_URL)
-		# Email alert
-		if config['alert']['email']['enabled'] == "true":
-			email_alerter(alertMessage, config)
-		# SMS alert
-		#TODO: Complete and test the SMS alert
-		#if config['alert']['sms']['enabled'] == "true":
-		#	sms_alerter(alertMessage, config)
-		#TODO: HTTP Endpoint Support
+		alertMessage = alert_msg(request, config, http_status)
+
 		# Local log
 		if config['alert']['local']['enabled'] == "true":
 			local_logger(alertMessage, config)
-	# Honeypot event logs
-	if request.headers.getlist("X-Forwarded-For"):
-		source_ip = request.headers.getlist("X-Forwarded-For")[0]
-	else:
-		source_ip = request.remote_addr
-	logger.info('{{"sourceip":"{}","host":"{}","request":"{}","http_method":"{}","body":"{}","user_agent":"{}"}}'.format(
-		source_ip, request.url_root, request.full_path, request.method, request.data, request.user_agent.string))
-	# Prepare and send the custom HTTP response
-	contype, body = generate_http_response(request, config)
-	# Customize the response using a template (in case you want to return a dynamic response, etc.)
-	# You can comment the next 2 lines if you don't want to use this. /Just an example/
-	if body == "custom.html":
-		return (render_template(body, browser = request.user_agent.browser, ua = request.user_agent.string))
+	
+		#get source_ip
+		if request.headers.getlist("X-Forwarded-For"):
+			source_ip = request.headers.getlist("X-Forwarded-For")[0]
+		else:
+			source_ip = request.remote_addr
+		
+		# Honeypot event logs
+		logger.info('{{"sourceip":"{}","host":"{}","request":"{}","http_method":"{}","body":"{}","user_agent":"{}"}}'.format(
+			source_ip, request.url_root, request.full_path, request.method, request.data, request.user_agent.string))
 
-	if contype == "application/json":
-		with open('templates/'+body) as f:
-			d = json.load(f)
-			return jsonify(d)
+		# Customize the response using a template (in case you want to return a dynamic response, etc.)
+		# You can comment the next 2 lines if you don't want to use this. /Just an example/
+		if body == "custom.html":
+			return (render_template(body, browser = request.user_agent.browser, ua = request.user_agent.string)), http_status
 
-	return (send_file(body, mimetype=contype) if "image" in contype else render_template(body))
+		if contype == "application/json":
+			with open('templates/'+body) as f:
+				d = json.load(f)
+				return jsonify(d), http_status
+
+		return (send_file(body, mimetype=contype) if "image" in contype else render_template(body)), http_status
 
 
-def load_config():
-	""" Load the configuration from local file or Amazon S3 """
-
-	# Check the environment variable for config type (local/s3)
-	#CONFIGFILE = os.environ.get('configFile')
-	CONFIGFILE = "local"
-	# Load config from S3
-	if CONFIGFILE == "s3":
-		BUCKET = os.environ.get('s3Bucket')
-		KEY = os.environ.get('s3Key')
-		#TODO: Add S3 support
-	elif CONFIGFILE == "local":
-		# Load config from the local file
-		with open('/config.json') as config_file:
-			conf = json.load(config_file)
-			logger.info("Local config file loaded")
+def load_config(configPath):
+	""" Load the configuration from local file """
+	with open(configPath) as config_file:
+		conf = json.load(config_file)
+		logger.info("Local config file loaded")
 
 	return conf
 
@@ -116,6 +102,7 @@ def generate_http_response(req, conf):
 	path = req.path
 	con_type = None
 	body_path = None
+	http_status = 200
 	if path in conf['traps']:
 		# Check if the token is defined and has a custom http response
 		for token in args:
@@ -130,11 +117,12 @@ def generate_http_response(req, conf):
 	if body_path is None:
 		con_type = conf['default-http-response']['content-type']
 		body_path = conf['default-http-response']['body']
+		http_status = 404
 
-	return con_type, body_path
+	return con_type, body_path, http_status
 
 
-def alert_msg(req, conf):
+def alert_msg(req, conf, http_status):
 	""" Prepare alert message dictionary """
 
 	# Message fields
@@ -195,61 +183,12 @@ def alert_msg(req, conf):
 		"http-headers": headersDict,
 		"timestamp": iso_8601_format(datetime.now()),
 		"args": argsDict,
-		"form": formDict
+		"form": formDict,
+		"http_response": http_status
 		#"threat-intel": threat_intel
 	}
 
 	return msg
-
-
-def email_alerter(msg, conf):
-	""" Send Email alert """
-
-	smtp_server = conf['alert']['email']['smtp_server']
-	smtp_port = conf['alert']['email']['smtp_port']
-	smtp_user = conf['alert']['email']['smtp_user']
-	smtp_password = conf['alert']['email']['smtp_password']
-	to_email = conf['alert']['email']['to_email']
-	subject = 'Honeyku Alert'
-	now = time.strftime('%a, %d %b %Y %H:%M:%S %Z', time.localtime())
-	body = ("Honeytoken triggered!\n\n"
-			"Time: {}\n"
-			"Source IP: {}\n"
-			#"Threat Intel Report: {}\n"
-			"User-Agent: {}\n"
-			"Token Note: {}\n"
-			"Token: {}\n"
-			"Path: {}\n"
-			"Host: {}").format(
-		now,
-		msg['source-ip'],
-		#msg['threat-intel'] if msg['threat-intel'] else "None",
-		msg['user-agent'],
-		msg['token-note'],
-		msg['token'],
-		msg['path'],
-		msg['host'])
-	email_text = "From: {}\nTo: {}\nSubject: {}\n\n{}".format(
-		smtp_user,
-		", ".join(to_email),
-		subject,
-		body)
-
-	try:
-		server = smtplib.SMTP(smtp_server, smtp_port)
-		server.ehlo()
-		server.starttls()
-		server.login(smtp_user, smtp_password)
-		server.sendmail(smtp_user, to_email, email_text)
-		server.close()
-		logger.info("Email alert is sent")
-	except smtplib.SMTPException as err:
-		logger.error("Error sending email: {}".format(err))
-
-
-def sms_alerter(msg, conf):
-	""" Send SMS alert """
-	#TODO: Complete and test the SMS Alert
 
 def local_logger(msg, conf):
 	"""Log to local """
@@ -258,103 +197,6 @@ def local_logger(msg, conf):
 	file.write(json.dumps(msg))
 	file.write("\n")
 	file.close()
-
-def slack_alerter(msg, webhook_url):
-	""" Send Slack alert """
-
-	now = time.strftime('%a, %d %b %Y %H:%M:%S %Z', time.localtime())
-	# Preparing Slack message
-	slack_message = {
-		"text": "*Honeytoken triggered!*\nA honeytoken has been triggered by {}".format(msg['source-ip']),
-		"username": "honeyku",
-		"icon_emoji": ":ghost:",
-		"attachments": [
-			{
-				"color": "danger",
-				# "title": "Alert details",
-				"text": "Alert details:",
-				"footer": "honeyku",
-				"footer_icon": "https://raw.githubusercontent.com/0x4D31/honeyLambda/master/docs/slack-footer.png",
-				"fields": [
-					{
-						"title": "Time",
-						"value": now,
-						"short": "true"
-					},
-					{
-						"title": "Source IP Address",
-						"value": msg['source-ip'],
-						"short": "true"
-					},
-					#{
-					#	"title": "Threat Intel Report",
-					#	"value": msg['threat-intel'] if msg['threat-intel'] else "None",
-					#},
-					{
-						"title": "Token",
-						"value": msg['token'],
-						"short": "true"
-					},
-					{
-						"title": "Token Note",
-						"value": msg['token-note'],
-						"short": "true"
-					},
-					{
-						"title": "Host",
-						"value": msg['host'],
-						"short": "true"
-					},
-					{
-						"title": "Path",
-						"value": msg['path'],
-						"short": "true"
-					},
-					{
-						"title": "Browser",
-						"value": msg['browser'],
-						"short": "true"
-					},
-					{
-						"title": "Browser Version",
-						"value": msg['browser_version'],
-						"short": "true"
-					},
-					{
-						"title": "Platform",
-						"value": msg['platform'],
-						"short": "true"
-					},
-					{
-						"title": "HTTP Method",
-						"value": msg['http-method'],
-						"short": "true"
-					},
-					{
-						"title": "User-Agent",
-						"value": msg['user-agent']
-					}
-					#{
-					#	"title": "HTTP Headers",
-					#	"value": msg['http-headers']
-					#}
-				]
-			}
-		]
-	}
-
-	# Sending Slack message
-	req = urllib.request.Request(webhook_url, data=json.dumps(slack_message).encode('utf8'))
-
-	try:
-		resp = urllib.request.urlopen(req)
-		logger.info("Slack alert is sent")
-	except urllib.error.HTTPError as err:
-		logger.error("Request failed: {} {}".format(err.code, err.reason))
-	except urllib.error.URLError as err:
-		logger.error("Connection failed: {}".format(err.reason))
-
-	return
 
 #https://stackoverflow.com/questions/34044820/python-iso-8601-date-format
 def iso_8601_format(dt):
@@ -372,5 +214,29 @@ def iso_8601_format(dt):
 
 	return fmt_datetime + fmt_timezone
 
+def consumeBody(body):
+	try:
+		a = json.loads(body)
+		return a
+	except:
+		return body.decode("utf-8")
+
 if __name__ == '__main__':
-	app.run(host='0.0.0.0', debug=False, use_reloader=True)
+	
+	#load config once
+	configFound = False
+	try:
+		config = load_config("config.json")
+		configFound = True
+	except:
+		pass
+
+	try:
+		config = load_config("/config.json")
+		configFound = True
+	except:
+		pass
+	
+	#config loaded, run the app
+	if configFound:
+		app.run(host='0.0.0.0', debug=False, use_reloader=True, port=11111)
