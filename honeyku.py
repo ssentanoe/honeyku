@@ -18,6 +18,7 @@
 
 from flask import Flask, request, render_template, send_file, jsonify
 import logging
+from logging.handlers import TimedRotatingFileHandler
 import sys
 import os
 import json
@@ -39,6 +40,8 @@ out_hdlr = logging.StreamHandler(sys.stdout)
 out_hdlr.setFormatter(logging.Formatter('%(asctime)s %(message)s'))
 out_hdlr.setLevel(logging.INFO)
 logger.addHandler(out_hdlr)
+file_hdlr = TimedRotatingFileHandler("logs/honeyku.log", when="d", interval=1, backupCount=10)
+logger.addHandler(file_hdlr)
 logger.setLevel(logging.INFO)
 
 app = Flask(__name__)
@@ -60,19 +63,8 @@ def catch_all(path):
 		# Preparing the alert message
 		alertMessage = alert_msg(request, config, http_status)
 
-		# Local log
-		if config['alert']['local']['enabled'] == "true":
-			local_logger(alertMessage, config)
-	
-		#get source_ip
-		if request.headers.getlist("X-Forwarded-For"):
-			source_ip = request.headers.getlist("X-Forwarded-For")[0]
-		else:
-			source_ip = request.remote_addr
-		
 		# Honeypot event logs
-		logger.info('{{"sourceip":"{}","host":"{}","request":"{}","http_method":"{}","body":"{}","user_agent":"{}"}}'.format(
-			source_ip, request.url_root, request.full_path, request.method, request.data, request.user_agent.string))
+		logger.info(json.dumps(alertMessage))
 
 		# Customize the response using a template (in case you want to return a dynamic response, etc.)
 		# You can comment the next 2 lines if you don't want to use this. /Just an example/
@@ -91,7 +83,7 @@ def load_config(configPath):
 	""" Load the configuration from local file """
 	with open(configPath) as config_file:
 		conf = json.load(config_file)
-		logger.info(configPath + " config file loaded")
+		print(configPath + " config file loaded")
 
 	return conf
 
@@ -207,14 +199,6 @@ def alert_msg(req, conf, http_status):
 
 	return msg
 
-def local_logger(msg, conf):
-	"""Log to local """
-	path = conf['alert']['local']['location']
-	file = open(path+"honeyku.log", "a+")
-	file.write(json.dumps(msg))
-	file.write("\n")
-	file.close()
-
 #https://stackoverflow.com/questions/34044820/python-iso-8601-date-format
 def iso_8601_format(dt):
 	"""YYYY-MM-DDThh:mm:ssTZD (1997-07-16T19:20:30-03:00)"""
@@ -256,7 +240,7 @@ if __name__ == '__main__':
 		pass
 
 	try:
-		sorrirConfig = load_config("production.json")
+		sorrirConfig = load_config("sorrir.json")
 		sorrirConfigFound = True
 	except:
 		pass

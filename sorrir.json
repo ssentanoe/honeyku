@@ -1,0 +1,90 @@
+{
+  "HostConfiguration": {
+    "a": {
+      "host": "localhost",
+      "port": 1234
+    },
+    "b": {
+      "host": "localhost",
+      "port": 1235
+    },
+    "c": {
+      "host": "localhost",
+      "port": 1236
+    }
+  },
+  "DeploymentConfiguration": {
+    "a": {
+      "components": ["barrier"]
+    },
+    "b": {
+      "components": ["DSB"]
+    },
+    "c": {
+      "components": ["user"]
+    }
+  },
+  "CommunicationConfiguration": {
+    "connectionTechs": [
+      {
+        "sourceContainer": "ext",
+        "sourceComponent": "sensor",
+        "sourcePort": "TO_DSB",
+        "targetContainer": "b",
+        "targetComponent": "DSB",
+        "targetPort": "FROM_SENSOR",
+        "commOption": "REST"
+      },
+      {
+        "sourceContainer": "b",
+        "sourceComponent": "DSB",
+        "sourcePort": "TO_BARRIER",
+        "targetContainer": "a",
+        "targetComponent": "barrier",
+        "targetPort": "FROM_DSB",
+        "commOption": "REST"
+      },
+      {
+        "sourceContainer": "b",
+        "sourceComponent": "DSB",
+        "sourcePort": "TO_USER",
+        "targetContainer": "c",
+        "targetComponent": "user",
+        "targetPort": "FROM_DSB",
+        "commOption": "REST"
+      },
+      {
+        "sourceContainer": "c",
+        "sourceComponent": "user",
+        "sourcePort": "TO_DSB",
+        "targetContainer": "b",
+        "targetComponent": "DSB",
+        "targetPort": "FROM_USER",
+        "commOption": "REST"
+      }
+    ]
+  },
+  "MQTTConfiguration": {
+    "host": "test.mosquitto.org"
+  },
+  "BLEConfiguration": {
+    "a": {
+      "sendHost": "localhost",
+      "sendPort": 8080,
+      "listenHost": "localhost",
+      "listenPort": 8081
+    },
+    "b": {
+      "sendHost": "localhost",
+      "sendPort": 8080,
+      "listenHost": "localhost",
+      "listenPort": 8081
+    },
+    "c": {
+      "sendHost": "localhost",
+      "sendPort": 8080,
+      "listenHost": "localhost",
+      "listenPort": 8081
+    }
+  }
+}
