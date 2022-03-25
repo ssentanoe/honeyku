@@ -245,6 +245,12 @@ if __name__ == '__main__':
 	except:
 		pass
 	
+	try:
+		sorrirConfig = load_config("/sorrir.json")
+		sorrirConfigFound = True
+	except:
+		pass
+	
 	#config loaded, run the app
 	if configFound and sorrirConfigFound:
 		merge_config()
