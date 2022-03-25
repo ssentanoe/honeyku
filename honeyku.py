@@ -78,6 +78,7 @@ def catch_all(path):
 
 		return (send_file(body, mimetype=contype) if "image" in contype else render_template(body)), http_status
 
+	return "", 200
 
 def load_config(configPath):
 	""" Load the configuration from local file """
