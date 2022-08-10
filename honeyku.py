@@ -93,7 +93,10 @@ def merge_config():
 	for a in connectionTechs:
 		#if a["commOption"] == "REST":
 		targetContainer = "a"
-		targetContainer = a["targetContainer"]
+		try:
+			targetContainer = a["targetContainer"]
+		except:
+			pass
 		url = "/" + a["targetContainer"] + "/" + a["targetComponent"] + "/" + a["targetPort"]
 		newEntry = {
 			"trap-note": "Expected component: " + a["sourceComponent"],
