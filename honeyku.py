@@ -91,16 +91,18 @@ def load_config(configPath):
 def merge_config():
 	connectionTechs = sorrirConfig["CommunicationConfiguration"]["connectionTechs"]
 	for a in connectionTechs:
-		if a["commOption"] == "REST":
-			url = "/" + a["targetContainer"] + "/" + a["targetComponent"] + "/" + a["targetPort"]
-			newEntry = {
-				"trap-note": "Expected source: " + a["sourceContainer"] + "; Expected component: " + a["sourceComponent"],
-				"trap-response": {
-					"content-type": "application/json",
-					"body": "empty.json"
-				}
+		#if a["commOption"] == "REST":
+		targetContainer = "a"
+		targetContainer = a["targetContainer"]
+		url = "/" + a["targetContainer"] + "/" + a["targetComponent"] + "/" + a["targetPort"]
+		newEntry = {
+			"trap-note": "Expected component: " + a["sourceComponent"],
+			"trap-response": {
+				"content-type": "application/json",
+				"body": "empty.json"
 			}
-			config["traps"][url] = newEntry
+		}
+		config["traps"][url] = newEntry
 
 	#clean up sorrir config
 	sorrirConfig.clear()
@@ -241,6 +243,12 @@ if __name__ == '__main__':
 		pass
 
 	try:
+		config = load_config("/config/config.json")
+		configFound = True
+	except:
+		pass
+
+	try:
 		sorrirConfig = load_config("sorrir.json")
 		sorrirConfigFound = True
 	except:
@@ -248,6 +256,12 @@ if __name__ == '__main__':
 	
 	try:
 		sorrirConfig = load_config("/sorrir.json")
+		sorrirConfigFound = True
+	except:
+		pass
+
+	try:
+		sorrirConfig = load_config("/config/sorrir.json")
 		sorrirConfigFound = True
 	except:
 		pass
